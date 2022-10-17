@@ -1,6 +1,7 @@
-use std::env;
+use std::{env, sync::atomic::AtomicUsize};
 
 use ipmpsc::{Sender, SharedRingBuffer};
+use serde::Serialize;
 
 pub static mut COMMS: Communication = Communication::new();
 
@@ -32,7 +33,7 @@ impl Communication {
         }
 
     }
-    pub fn send(&self,message: String){
+    pub fn send(&self,message: &impl Serialize){
         if let Some(sender) = &self.sender{
             sender.send(&message).unwrap();
         }

@@ -1,2 +1,2 @@
 [workspace]
-members=["firmus_metrics","firmus","firmus_lib","test_applicaton"]
+members=["firmus_metrics","firmus","firmus_lib","test_applicaton","firmus_daemon"]
