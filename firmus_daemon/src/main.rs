@@ -18,7 +18,7 @@ enum FirmusError{
 async fn main() -> Result<(),FirmusError>{
     let port = env::var("FIRMUS_PORT").unwrap_or("8080".to_string());
     let mut parent = Parent::new();
-    let listener = TcpListener::bind(format!("127.0.0.1{port}")).await?;
+    parent.listen(&format!("127.0.0.1{port}"));
 
     tokio::spawn(async move {
         while let Ok((socket,address)) = listener.accept().await{
