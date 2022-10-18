@@ -9,3 +9,5 @@ edition = "2021"
 clap = { version = "4.0.15", features = ["derive"] }
 ipmpsc = "0.5.1"
 tokio = {version="1.21.2",features=["full","process"]}
+thiserror = "1.0.37"
+serde_json = "1.0.86"
