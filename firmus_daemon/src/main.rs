@@ -1,9 +1,13 @@
-mod parent;
+mod firmus_daemon;
+mod process;
+mod dash_connection;
 use std::{env, task::Poll};
 use clap::Parser;
+use firmus_lib::communication::{ConnectionType, instructor};
 use ipmpsc::{Sender, SharedRingBuffer, Receiver};
-use parent::Parent;
-use tokio::{process::Command, io::{AsyncReadExt, BufReader, AsyncBufReadExt, AsyncWriteExt}, net::TcpListener};
+use firmus_daemon::FrimusDaemon;
+
+use tokio::{process::Command, io::{AsyncReadExt, BufReader, AsyncBufReadExt, AsyncWriteExt}, net::{TcpListener, TcpStream}};
 
 
 
@@ -17,18 +21,30 @@ enum FirmusError{
 #[tokio::main]
 async fn main() -> Result<(),FirmusError>{
     let port = env::var("FIRMUS_PORT").unwrap_or("8080".to_string());
-    let mut parent = Parent::new();
-    parent.listen(&format!("127.0.0.1{port}"));
+    let parent = FrimusDaemon::new();
+    let listener = TcpListener::bind(format!("127.0.0.1:{port}")).await?;
 
     tokio::spawn(async move {
-        while let Ok((socket,address)) = listener.accept().await{
-            match parent.add_children(socket){
-                _ => {}
-                Err(err) => {}
-            }
-            
+        while let Ok((stream,address)) = listener.accept().await{
+            handle_connection(stream);                
         }
     });
+
     
+    Ok(())
+}
+
+async fn handle_connection(stream: TcpStream)-> Result<(),FirmusError>{
+    let mut reader = std::io::BufReader::new(stream.into_std().unwrap());
+    let connection_type: ConnectionType = serde_json::from_reader(&mut reader).unwrap();
+    match connection_type{
+        firmus_lib::communication::ConnectionType::Program => {
+            let command: instructor::Command = serde_json::from_reader(&mut reader).unwrap();
+            handle_instructor_command(command);
+        },
+        firmus_lib::communication::ConnectionType::Instructor => {
+
+        },
+    }
     Ok(())
 }
