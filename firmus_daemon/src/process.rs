@@ -1,8 +1,8 @@
 use std::net::TcpStream;
 
 use firmus_lib::config::Config;
-use tokio::{process::Command, task::JoinHandle};
-
+use tokio::{process::Command, task::JoinHandle, io::BufReader};
+use tokio::io::{ AsyncBufReadExt};
 use crate::{FirmusError, dash_connection::DashConnection};
 enum ProcessError{
 
@@ -31,8 +31,15 @@ impl Process{
             None
         };
         self.handle = Some(tokio::spawn(async {
-            let stdout = command.stdout.take().unwrap();
-            let stderr = command.stderr.take().unwrap();
+            let stdout = BufReader::new(command.stdout.take().unwrap()).lines();
+            let stderr = BufReader::new(command.stderr.take().unwrap()).lines();
+            tokio::spawn(async move {
+                while let Some(line) = stdout.next_line().await.unwrap() {
+                    if let Some(dash) = dash_connection{
+                        dash.send(line);
+                    }
+                }
+            });
             
         }));
         

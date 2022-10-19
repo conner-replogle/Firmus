@@ -21,7 +21,7 @@ enum FirmusError{
 #[tokio::main]
 async fn main() -> Result<(),FirmusError>{
     let port = env::var("FIRMUS_PORT").unwrap_or("8080".to_string());
-    let parent = FrimusDaemon::new();
+    let daemon = FrimusDaemon::new();
     let listener = TcpListener::bind(format!("127.0.0.1:{port}")).await?;
 
     tokio::spawn(async move {
@@ -39,10 +39,11 @@ async fn handle_connection(stream: TcpStream)-> Result<(),FirmusError>{
     let connection_type: ConnectionType = serde_json::from_reader(&mut reader).unwrap();
     match connection_type{
         firmus_lib::communication::ConnectionType::Program => {
-            let command: instructor::Command = serde_json::from_reader(&mut reader).unwrap();
-            handle_instructor_command(command);
+            
         },
         firmus_lib::communication::ConnectionType::Instructor => {
+            let command: instructor::Command = serde_json::from_reader(&mut reader).unwrap();
+            handle_instructor_command(command);
 
         },
     }
