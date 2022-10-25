@@ -9,3 +9,4 @@ edition = "2021"
 clap = { version = "4.0.15", features = ["derive"] }
 ipmpsc = "0.5.1"
 tokio = {version="1.21.2",features=["full","process"]}
+firmus_lib = {path="./../firmus_lib"}

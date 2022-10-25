@@ -1,10 +1,11 @@
 mod process;
-mod stream_wrapper;
+mod dash_connection;
 use arc_swap::ArcSwap;
 use clap::Parser;
+use dash_connection::DashConnection;
 use firmus_lib::communication::{
     instructor::{self, Command},
-    ConnectionType,
+    ConnectionType, stream_wrapper::Stream, base::BaseResponse,
 };
 use process::Process;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -17,7 +18,7 @@ use std::{
     task::Poll,
     thread, io::Read,
 };
-use stream_wrapper::Stream;
+
 
 use std::sync::mpsc;
 
@@ -32,10 +33,12 @@ enum FirmusError {
 }
 
 fn main() -> Result<(), FirmusError> {
-    let addr: SocketAddr = SocketAddr::from_str("127.0.0.1:8888").unwrap();
+    let port = env::var("FIRMUS_PORT").unwrap_or("8888".to_string());
+    let addr: SocketAddr = SocketAddr::from_str(&format!("127.0.0.1:{port}")).unwrap();
     let listener = TcpListener::bind(addr).unwrap();
-
-    let mut thread_safe_processes: ThreadSafeProcess = Arc::from(Mutex::from(HashMap::new()));
+    println!("Listening on addr {addr}");
+    let mut dash_connection = DashConnection::new();
+    let thread_safe_processes: ThreadSafeProcess = Arc::from(Mutex::from(HashMap::new()));
 
     for stream in listener.incoming() {
         match stream {
@@ -50,12 +53,18 @@ fn main() -> Result<(), FirmusError> {
                 let connection_type: ConnectionType = stream.read()?;
                 match connection_type {
                     ConnectionType::Program => {
+                        stream.send_base(BaseResponse::Ok).unwrap();
+                        println!("Stream identified as program");
                         let thread_safe_processes = thread_safe_processes.clone();
                         thread::spawn(move || {
                             handle_program(stream, thread_safe_processes).unwrap();
                         });
                     }
                     ConnectionType::Instructor => {
+                        stream.send_base(BaseResponse::Ok).unwrap();
+                        println!("Stream identified as Instructor");
+                        
+
                         let thread_safe_processes = thread_safe_processes.clone();
                         thread::spawn(move || {
                             handle_instructor(stream, thread_safe_processes).unwrap();
@@ -98,12 +107,14 @@ fn handle_instructor(
 }
 
 fn start_program(
-    stream: Stream,
+    mut stream: Stream,
     thread_safe_processes: ThreadSafeProcess,
     config: firmus_lib::config::Config,
 ){
     let mut process = Process::from(config);
+    println!("Running command {}",process.config.run_command);
     if let Ok(pid) = process.start(){
+        println!("Process Started with pid:{pid}");
         let mut proccesses = thread_safe_processes.lock().unwrap();
         proccesses.insert(pid,Arc::from(Mutex::from(process)));
         let process = proccesses.get_mut(&pid).unwrap();
@@ -117,7 +128,19 @@ fn start_program(
                 loop{
                     let mut buf = Vec::new();
                     if stdout.read(&mut buf).unwrap() > 0{
-                        
+                        println!("stdout:{}",String::from_utf8(buf).unwrap())
+                    }
+                    
+                }
+            });
+
+        });
+        thread::scope(|s|{
+            s.spawn(||{
+                loop{
+                    let mut buf = Vec::new();
+                    if stderr.read(&mut buf).unwrap() > 0{
+                        println!("stderr:{}",String::from_utf8(buf).unwrap())
                     }
                     
                 }
@@ -130,6 +153,9 @@ fn start_program(
 
 
 
+    }else{
+        println!("failed to start program");
+        stream.send_base(BaseResponse::Error(1, "Program failed to start".to_string())).unwrap();
     }
     
 }

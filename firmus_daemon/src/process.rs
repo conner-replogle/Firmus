@@ -1,8 +1,8 @@
 use std::{process::{Command, Child, Stdio}, thread, io};
 
-use firmus_lib::config::Config;
+use firmus_lib::{config::Config, communication::stream_wrapper::Stream};
 
-use crate::stream_wrapper::Stream;
+
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct ProcessStatus {
     id: String,

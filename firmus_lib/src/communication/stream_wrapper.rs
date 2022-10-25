@@ -1,6 +1,7 @@
 use std::{net::TcpStream, io::Write};
 
-use firmus_lib::communication::base::{self, BaseResponse};
+use super::base::BaseResponse;
+
 
 
 
