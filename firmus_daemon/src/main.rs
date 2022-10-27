@@ -7,7 +7,7 @@ use firmus_lib::communication::{
     instructor::{self, Command},
     ConnectionType, stream_wrapper::Stream, base::BaseResponse,
 };
-use process::Process;
+use process::{Process, ProcessStatus};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     collections::HashMap,
@@ -100,7 +100,7 @@ fn handle_instructor(
         Command::Stop(id) => {}
         Command::List => {
             let processes = thread_safe_processes.lock().unwrap();
-            //stream.write(processes.values());
+            stream.write(processes.values().zip(processes.keys()).map(|(v,k)|{(*k,v.lock().unwrap().into_status())}).collect::<Vec<(u32,ProcessStatus)>>()).unwrap();
         }
     }
     Ok(())

@@ -5,10 +5,10 @@ use firmus_lib::{config::Config, communication::stream_wrapper::Stream};
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct ProcessStatus {
-    id: String,
+    id: u32,
     ipc_online: bool,
     process_online: bool,
-    pid: String,
+    pid: u32,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -31,7 +31,10 @@ impl Process {
         }
     }
     pub fn start(&mut self) -> Result<u32,ProcessError> {
-        let mut command = Command::new(&self.config.run_command);
+        let mut args = self.config.run_command.split(" ");
+        let main = args.next().unwrap();
+        let mut command = Command::new(main);
+        command.args(args);
         command.stdout(Stdio::piped());
         command.stderr(Stdio::piped());
         let child = command.spawn()?;
@@ -42,10 +45,10 @@ impl Process {
     }
     pub fn into_status(&self) -> ProcessStatus {
         ProcessStatus {
-            id: "".to_string(),
+            id: 0,
             ipc_online: self.stream.is_some(),
-            process_online: self.stream.is_some(),
-            pid: "".to_string(),
+            process_online: self.child.is_some(),
+            pid: self.child.as_ref().map_or(0, |a|{a.id()}),
         }
     }
 }
